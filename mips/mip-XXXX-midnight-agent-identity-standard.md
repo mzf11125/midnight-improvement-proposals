@@ -6,7 +6,7 @@ Authors:
 Status: Draft
 Category: Standards
 Created: 2026-05-18
-Requires: none
+Requires: MPS-0006
 Replaces: none
 ---
 
