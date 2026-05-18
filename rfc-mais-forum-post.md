@@ -1,9 +1,5 @@
-# [RFC] MIP-XXXX: Midnight Agent Identity Standard (MAIS)
-
 **Category**: Standards — Midnight Improvement Proposal  
 **Status**: Draft — seeking community feedback before formal submission  
-**Author**: Zidan (@mzf11125)  
-**Date**: 18 May 2026  
 
 ---
 
