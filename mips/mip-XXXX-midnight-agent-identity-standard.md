@@ -28,109 +28,105 @@ Replaces: none
 
 ## Abstract
 
-This MIP proposes the Midnight Agent Identity Standard (MAIS)  --  a standardized identity, reputation, and validation framework for autonomous AI agents operating on Midnight Network. As agentic AI proliferates across DeFi, governance, and privacy-preserving applications, Midnight faces a new class of on-chain entities  --  autonomous agents  --  that need verifiable identity without sacrificing the privacy guarantees that define the Midnight network.
+This MIP proposes the Midnight Agent Identity Standard, called MAIS for short. It is a framework for identity, reputation, and validation for autonomous AI agents that run on Midnight Network.
 
-MAIS provides a three-tier disclosure identity model (public, auditor, and private view) mapped directly to Midnight's existing privacy architecture. It defines a Compact contract interface for agent registration, reputation accumulation, and third-party validation, with ZK-provable reputation claims. The standard includes a dual-mode identity system  --  contract-address-based for public agents and ZK-credential-based for private agents  --  and an optional ERC-8004 cross-chain identity bridge for interoperability with the Ethereum agent identity ecosystem.
+Agentic AI is spreading across DeFi, governance, and privacy applications. Midnight faces a new kind of on chain entity, the autonomous agent, that needs a way to prove who it is without breaking the privacy guarantees that define the network.
+
+MAIS uses a three tier disclosure model for identity data. Public tier is for anyone to read. Auditor tier is for regulators and designated reviewers. Private tier is for the operator alone. This maps directly onto Midnight's existing privacy architecture.
+
+The standard defines a Compact contract interface for agent registration, reputation building, and third party validation. Reputation claims are ZK provable, meaning an agent can prove its trust level without exposing the underlying data. The system supports two identity modes. A contract address mode for agents that want to be publicly discoverable. A ZK credential mode for agents that need operational privacy. An optional ERC-8004 bridge connects MAIS identities to the Ethereum agent identity ecosystem for agents that operate across both chains.
 
 ## Motivation
 
 ### The Gap
 
-ERC-8004 ("AI Agent Identity, Reputation, and Validation Registries") launched on Ethereum mainnet in January 2026. It provides agent identity and reputation registries on EVM chains, but operates on transparent blockchains where all agent metadata, reputation scores, and validation records are publicly readable. This creates a fundamental tension for agents operating in competitive or strategic domains  --  a trading agent's identity and reputation are visible to every competitor who can reverse-engineer its strategy from transaction patterns.
+ERC-8004 launched on Ethereum mainnet in January 2026. It provides agent identity and reputation registries on EVM chains. But those chains are transparent, so every piece of agent metadata, every reputation score, and every validation record sits in public view. That creates a real problem for agents that operate in competitive or strategic domains. A trading agent's identity and reputation are visible to every competitor who can reverse engineer its strategy from the transaction trail.
 
-Midnight's zero-knowledge architecture solves this tension by design. Selective disclosure means an agent can prove its identity and reputation to a counterparty without revealing its full transaction history to the network. However, Midnight currently lacks a standardized interface for agents to do this  --  there is no MIP defining what an agent identity _means_ on Midnight, how reputation is accumulated and proven, or how validators can vouch for agent behavior without exposing private transaction data.
+Midnight's zero knowledge architecture was designed to solve exactly this tension. Selective disclosure means an agent can prove its identity and reputation without showing its full history to the network. But Midnight does not yet have a standard interface for agents to do this. There is no MIP that defines what an agent identity means on Midnight, how reputation gets built up and proven, or how validators can vouch for agent behaviour without exposing private transaction data.
 
 ### Why This Matters Now
 
-Three converging developments make this standard urgent:
+Three things are converging to make this standard urgent.
 
-1. **Midnight mainnet launched March 30, 2026.** The network is live with Google Cloud as a validator. Developer activity surged 1,617% post-Summit in late 2025. The window to establish a foundational identity standard  --  before a fragmented ecosystem of incompatible agent identity implementations emerges  --  is open right now.
+First, Midnight mainnet launched on 30 March 2026. The network is live and has Google Cloud running as a validator. Developer activity surged over 1,600 percent after the Summit in late 2025. The window to establish a foundational identity standard before the ecosystem fragments into incompatible schemes is open right now.
 
-2. **AlphaTON partnership targets Telegram's one billion users** with privacy-preserving AI agents. These agents need a native Midnight identity system  --  they cannot depend on EVM-based ERC-8004 for identity when their core value proposition is Midnight's privacy guarantees.
+Second, the AlphaTON partnership is targeting Telegram's one billion users with privacy preserving AI agents. Those agents need an identity system that is native to Midnight. They cannot lean on EVM based ERC-8004 for identity when their entire value proposition rests on Midnight's privacy guarantees.
 
-3. **Midnight City Simulation** uses Google Gemini-powered agents as a live public testbed. These agents have no formal identity standard  --  each simulator implements its own ad-hoc agent identity scheme. A standard would make Midnight City agents composable and interoperable with real-world Midnight applications.
+Third, Midnight City Simulation uses Google Gemini agents as a live public testbed. Those agents have no formal identity standard. Each simulator invents its own ad hoc scheme. A standard would make Midnight City agents composable with real world applications instead of isolated inside the simulation.
 
 ### Design Principles
 
-MAIS is designed around five principles:
+MAIS is built on five principles.
 
-- **Privacy-first**: Identity and reputation claims are verifiable without revealing the underlying private data. This is not an adaptation of a transparent-chain standard; it is designed for Midnight's ZK architecture from the start.
-- **Disclosure-graded**: Different stakeholders need different levels of visibility. A regulator needs auditor-view access; a counterparty needs reputation-proof verification; the operator needs full private access. MAIS maps identity data to Midnight's three-tier disclosure model.
-- **Composable**: Other Midnight standards (x402 for payments, Bastion for security enforcement, governance contracts) should be able to consume MAIS identity and reputation data as standard inputs.
-- **Ecosystem-bridging**: MAIS should interoperate with the broader AI agent identity ecosystem  --  specifically ERC-8004  --  without compromising Midnight's privacy guarantees. Cross-chain identity linking should be optional, not mandatory.
-- **Incremental adoption**: The simplest mode (public identity via Compact address) should work with one contract call. Advanced modes (ZK credentials, auditor-view, cross-chain bridging) should be additive without breaking the base interface.
+Privacy first means identity and reputation claims are verifiable without revealing the private data underneath. This is not an adaptation of a transparent chain standard. It was designed from scratch for Midnight's ZK architecture.
+
+Disclosure graded means different stakeholders see different levels. A regulator needs auditor access. A counterparty needs reputation verification. The operator needs full private access. MAIS maps identity data to Midnight's three tier model.
+
+Composable means other Midnight standards can consume MAIS data as standard inputs. This includes x402 for payments, Bastion for security enforcement, and governance contracts.
+
+Ecosystem bridging means MAIS should work with the broader AI agent identity world, especially ERC-8004, without giving up Midnight's privacy advantage. Cross chain identity linking stays optional, never mandatory.
+
+Incremental adoption means the simplest mode works with one contract call. Advanced modes like ZK credentials, auditor access, and cross chain bridging stack on top without breaking the base.
 
 ## Specification
 
 ### 1. Core Concepts
 
-MAIS defines four registries, each implemented as a Compact contract:
+MAIS defines four registries. Each one is a Compact contract.
 
-| Registry | Responsibility | Disclosure Default |
-|----------|---------------|-------------------|
-| **Identity Registry** | Agent registration, metadata, operator binding | Public (basic), Private (advanced) |
-| **Reputation Registry** | Accumulated trust scores from historical behavior | Public score, private evidence |
-| **Validation Registry** | Third-party attestations of agent integrity | Auditor-view |
-| **Disclosure Tier Registry** | Maps each agent's data to public/auditor/private tiers | Per-agent configurable |
+The Identity Registry handles agent registration, metadata storage, and operator binding. It defaults to public visibility for basic mode and private visibility for advanced mode.
 
-An agent identity is represented by one of two modes:
+The Reputation Registry tracks accumulated trust scores built from historical behaviour. Scores are public. Evidence is private.
 
-- **Mode A  --  Public Identity**: The agent's Compact contract address serves as its identity. Registration is public. Metadata (name, capabilities, operator address) is stored in public state. Suitable for agents operating in open marketplaces.
+The Validation Registry manages third party attestations about agent integrity. It operates at auditor tier visibility.
 
-- **Mode B  --  Private Identity**: The agent holds a ZK credential (a commitment to a secret). The commitment is stored in private state. The operator proves knowledge of the credential via ZK proof without revealing the underlying identity on-chain. Suitable for agents requiring operational privacy.
+The Disclosure Tier Registry maps each agent's data into Midnight's public, auditor, and private tiers. It is configurable per agent.
 
-Both modes expose the same standard interface  --  the mode choice is an implementation detail abstracted by the SDK.
+An agent identity can take one of two forms.
 
-### 2. Identity Registry (`identity-registry.compact`)
+Mode A, public identity, uses the agent's Compact contract address as the identity. Registration is public. Metadata including name, capabilities, and operator address lives in public state. This suits agents that operate in open marketplaces.
+
+Mode B, private identity, uses a ZK credential where the agent holds a commitment to a secret. The commitment stays in private state. The operator proves knowledge of the credential through a ZK proof without putting the identity on chain. This suits agents that need operational privacy.
+
+Both modes expose the same standard interface. The mode choice is abstracted away by the SDK. Consuming contracts do not need to know which mode is underneath.
+
+### 2. Identity Registry
 
 #### 2.1 Public Mode Registration
 
-An agent registers by calling `registerPublic()` on the Identity Registry contract. The call provides:
+An agent registers by calling `registerPublic()` on the Identity Registry contract. The call provides three things. An `operator` address for the human or organisation controlling the agent. A `metadata` struct with name, description, capabilities, and version. And an `ownershipProof` that proves the operator controls the agent address through a simple signature check.
 
-- `operator`: The Compact address of the human or organization controlling the agent.
-- `metadata`: A public metadata struct containing `name` (string), `description` (string), `capabilities` (array of capability enum values), and `version` (string).
-- `ownershipProof`: A cryptographic proof that `operator` controls `agentAddress` (a simple signature verification).
-
-On successful registration, the contract stores the identity in public state and emits a `RegistrationEvent(agentAddress, operator)` event.
-
-The agent is assigned a unique `AgentId` (numeric, auto-incremented). The Compact address and `AgentId` are both valid identifiers  --  contracts can reference agents by either.
+On success the contract stores the identity in public state and emits a `RegistrationEvent` event. The agent gets a unique numeric `AgentId`. Both the Compact address and the `AgentId` are valid identifiers. Contracts can reference agents by either one.
 
 #### 2.2 Private Mode Registration
 
-An agent registers by calling `registerPrivate()` on the Identity Registry contract. The call provides:
+An agent registers by calling `registerPrivate()` on the Identity Registry contract. The call provides an `operator` address, the same `metadata` struct as public mode, a `credentialCommitment` hash, and a `credentialProof` ZK proof that the operator knows the preimage of that commitment.
 
-- `operator`: The Compact address of the controlling entity.
-- `metadata`: Identical struct to public mode.
-- `credentialCommitment`: A hash commitment to the agent's secret credential.
-- `credentialProof`: A ZK proof that the operator knows the preimage of `credentialCommitment`.
-
-On successful registration, the contract stores the credential commitment in **private state**  --  it is not readable by other contracts or external observers. No public event is emitted for private registrations.
-
-The agent is assigned a unique `AgentId` but this ID is stored in private state. External observers cannot enumerate private agents.
+On success the contract stores the credential commitment in private state. It is not readable by other contracts or external watchers. No public event fires for private registrations. The agent gets a unique `AgentId` but that ID also lives in private state. External observers cannot enumerate private agents.
 
 #### 2.3 Standard Interface
 
-All identity operations, regardless of mode, are accessed through a uniform interface:
+All identity operations work through the same interface regardless of mode.
 
 ```
-// Query whether an agent exists (returns boolean, works for both modes)
+// Query whether an agent exists, works for both modes
 function exists(agentId: AgentId): bool
 
-// Get public metadata (returns null for private agents)
+// Get public metadata, returns null for private agents
 function getMetadata(agentId: AgentId): Metadata?
 
 // Prove agent identity to a verifier
-// Public mode: returns the agent address from public state
-// Private mode: returns a ZK proof of credential knowledge
+// Public mode returns the agent address from public state
+// Private mode returns a ZK proof of credential knowledge
 function proveIdentity(agentId: AgentId): IdentityProof
 
-// Update metadata (operator only)
+// Update metadata, operator only
 function updateMetadata(agentId: AgentId, newMetadata: Metadata)
 
-// Transfer operator control (requires multi-sig or ZK proof of current operator consent)
+// Transfer operator control, needs multi sig or ZK proof
 function transferOperator(agentId: AgentId, newOperator: CompactAddress, transferProof: TransferProof)
 
-// Deactivate agent (operator only)
+// Deactivate agent, operator only
 function deactivate(agentId: AgentId)
 ```
 
@@ -138,38 +134,36 @@ function deactivate(agentId: AgentId)
 
 ```
 struct Metadata {
-    name: string,           // Human-readable agent name
+    name: string,           // Human readable agent name
     description: string,    // What the agent does
-    capabilities: [Capability],  // Enumerated: PAYMENT, TRADING, GOVERNANCE, COMPLIANCE, DATA
+    capabilities: [Capability],  // PAYMENT, TRADING, GOVERNANCE, COMPLIANCE, DATA
     version: string,        // Semantic version
     homepage: string?,      // Optional URL
-    erc8004TokenId: u256?,  // Optional cross-chain link to ERC-8004 NFT
+    erc8004TokenId: u256?,  // Optional cross chain link to ERC-8004 NFT
 }
 ```
 
-### 3. Reputation Registry (`reputation-registry.compact`)
+### 3. Reputation Registry
 
-#### 3.1 Model: Public Scores, Private Evidence
+#### 3.1 Public Scores with Private Evidence
 
-The reputation system adopts a **public score, private evidence** model:
+The reputation system stores public scores backed by private evidence.
 
-- **Public score**: A numeric value (0-100) and a tier label (Basic, Proven, Institutional) stored in public state. Any contract or observer can read an agent's current reputation tier without authorization.
+The score is a number from 0 to 100 kept in public state. A tier label sits on top of it. Anyone can read an agent's current reputation tier without any authorisation. The evidence that produced the score lives as hash commitments in private state. The score itself is verifiable because it sits on chain. But the reasons behind the score stay hidden. Competitors cannot reverse engineer an agent's strategy from its reputation history.
 
-- **Private evidence**: The transactions and validations that produced the score are stored as hash commitments in private state. The score is verifiable (it's on-chain), but the _reasons_ for the score are private  --  preventing competitors from reverse-engineering an agent's strategy from its reputation history.
-
-- **ZK prove**: An agent can generate a ZK proof that asserts "my reputation score is ≥ X" without revealing the exact score. This enables nuanced trust negotiations  --  a counterparty can set a minimum reputation threshold without knowing the agent's precise standing.
+An agent can generate a ZK proof that says "my reputation score is at least X" without giving away the exact number. This lets two counterparties negotiate trust at whatever threshold matters to them without either side learning more than needed.
 
 #### 3.2 Reputation Tiers
 
-| Tier | Score Range | Transaction Limits | Audit Access | Validator Requirement |
-|------|-------------|-------------------|--------------|----------------------|
-| **Basic** | 0-59 | Low volume, low value | Public only | 1+ Open validators |
-| **Proven** | 60-89 | Standard commerce access | Auditor-view available | 3+ validators, ≥1 Trusted |
-| **Institutional** | 90-100 | Full access, reduced friction | Full auditor-view | 5+ validators, ≥1 Institutional |
+| Tier | Score Range | What it Unlocks | Audit Access | Validator Rule |
+|------|-------------|----------------|--------------|----------------|
+| **Basic** | 0 to 59 | Low volume and low value | Public only | Needs 1 or more open validators |
+| **Proven** | 60 to 89 | Standard commerce access | Auditor tier available | Needs 3 or more validators, at least 1 trusted |
+| **Institutional** | 90 to 100 | Full access, less friction | Full auditor tier | Needs 5 or more validators, at least 1 institutional |
 
 #### 3.3 Score Calculation
 
-Reputation scores are calculated as a weighted moving average over a 90-day evidence window:
+Reputation scores use a weighted moving average over a 90 day evidence window.
 
 ```
 newScore = 0.7 * currentScore + 0.3 * weightedAverage(evidenceWindow)
@@ -177,26 +171,22 @@ newScore = 0.7 * currentScore + 0.3 * weightedAverage(evidenceWindow)
 weightedAverage = sum(evidence.weight * validatorReputation) / sum(validatorReputation)
 ```
 
-- **Recency bias**: Evidence within the last 7 days carries 2x weight; 7-30 days carries 1x; 30-90 days carries 0.5x.
-- **Validator quality**: Evidence from Institutional validators carries 3x weight; Trusted carries 2x; Open carries 1x.
-- **Negative penalty**: One negative validation requires three positive validations to offset the score impact.
-- **Decay**: If no new evidence is added for 30 days, the score decays by 1 point per week.
+Evidence from the last 7 days carries double weight. Evidence from 7 to 30 days carries normal weight. Evidence from 30 to 90 days carries half weight.
+
+Evidence from institutional validators carries triple weight. Trusted validators carry double. Open validators carry normal weight.
+
+One negative validation takes three positive validations to cancel out the score impact.
+
+If no new evidence arrives for 30 days the score decays by one point each week.
 
 #### 3.4 Evidence Types
 
-Evidence is added by validators (see Validation Registry) after observing agent behavior:
+Validators add evidence after watching agent behaviour. The evidence types are transaction success, counterparty dispute, audit pass, TEE attestation (optional extension), and manual HITL review.
 
-- **Transaction success**: The agent completed a transaction within policy limits.
-- **Counterparty dispute**: A counterparty reported a policy violation.
-- **Audit pass**: An auditor reviewed the agent's activity log and found compliance.
-- **TEE attestation**: The agent produced a valid TEE attestation proving code integrity (optional extension).
-- **Manual review**: A human reviewer approved a HITL-gated transaction.
-
-Each evidence struct contains:
 ```
 struct Evidence {
     evidenceType: EvidenceType,
-    commitment: Hash,          // Hash of the underlying transaction data
+    commitment: Hash,          // Hash of the transaction data underneath
     validatorId: ValidatorId,
     timestamp: u64,
     positive: bool,
@@ -206,94 +196,92 @@ struct Evidence {
 #### 3.5 ZK Reputation Proof Interface
 
 ```
-// Standard interface for reputation-constrained transactions
+// Standard interface for reputation gated transactions
 function proveReputation(agentId: AgentId, minScore: u8): ReputationProof
 
 // ReputationProof contains:
-//   - agentId (public input)
-//   - proof that agent's score >= minScore
-//   - timestamp (proof freshness)
-//   - does NOT reveal exact score or evidence history
+//   agentId as a public input
+//   proof that agent's score meets or exceeds minScore
+//   timestamp for proof freshness
+//   does NOT reveal exact score or evidence history
 ```
 
-### 4. Validation Registry (`validation-registry.compact`)
+### 4. Validation Registry
 
 #### 4.1 Hybrid Validator Model
 
-The validation system uses three validator tiers with escalating requirements:
+The validation system uses three tiers with rising requirements.
 
-| Tier | Registration Requirement | Stake Required | Accuracy Tracking | Privileges |
-|------|-------------------------|---------------|-------------------|------------|
-| **Open** | Any address, stake NIGHT | 10,000 NIGHT | Yes | Can validate Basic tier agents |
-| **Trusted** | Foundation audited | 50,000 NIGHT | Yes | Can validate Proven tier agents |
-| **Institutional** | KYC-compliant entity | 100,000 NIGHT | Yes | Can validate all agents, produce compliance reports |
+Open validators can be any address that stakes NIGHT. It takes 10,000 NIGHT. Accuracy is tracked. Funds are slashable.
+
+Trusted validators must complete a Foundation audit. It takes 50,000 NIGHT. These validators can validate Proven tier agents.
+
+Institutional validators must prove they completed KYC through an accredited provider. It takes 100,000 NIGHT. These validators can validate any agent and produce compliance reports.
 
 #### 4.2 Validator Registration
 
-Validators register by calling `registerValidator()`:
+Validators register through `registerValidator()`.
 
 ```
 function registerValidator(
     operator: CompactAddress,
     tier: ValidatorTier,
     stake: u64,
-    proof: ValidatorProof  // ZK-proof of qualification
+    proof: ValidatorProof  // ZK proof of qualification for the tier
 )
 ```
 
-- **Open validators**: Must stake 10,000 NIGHT. No additional proof required. Stake is slashable for bad behavior.
-- **Trusted validators**: Must prove Foundation audit completion. Stake is 50,000 NIGHT.
-- **Institutional validators**: Must prove KYC completion via a ZK-KYC proof from an accredited provider. Stake is 100,000 NIGHT.
+Open validators need the stake, nothing more. Trusted validators must prove Foundation audit completion. Institutional validators must prove KYC completion through a ZK KYC proof.
 
 #### 4.3 Validation Operation
 
-A validator adds evidence by calling `addEvidence()`:
+A validator adds evidence by calling `addEvidence()`.
 
 ```
 function addEvidence(
     agentId: AgentId,
     evidence: Evidence,
-    observationProof: ObservationProof  // ZK proof that validator observed the transaction
+    observationProof: ObservationProof
 )
 ```
 
-The validator's stake is at risk: if a validation is later challenged and found to be inaccurate (e.g., the agent committed a policy violation that the validator missed), the validator's `accuracyScore` is reduced and stake may be slashed.
+The validator's stake is on the line. If a validation gets challenged later and turns out to be wrong, the validator's accuracy score drops and stake may get slashed.
 
 #### 4.4 Validator Accuracy Tracking
 
 ```
 function reportOutcome(agentId: AgentId, validatorId: ValidatorId, outcome: Outcome)
 
-// SUCCESS: validator accuracyScore += 1
-// VIOLATION_MISSED: validator accuracyScore -= 5, stake slashed by SLASH_AMOUNT
-// FALSE_POSITIVE: validator accuracyScore -= 3, stake slashed by half SLASH_AMOUNT
+// SUCCESS adds 1 to validator accuracyScore
+// VIOLATION_MISSED subtracts 5, stake gets slashed by SLASH_AMOUNT
+// FALSE_POSITIVE subtracts 3, stake gets slashed by half
 ```
 
-Validators whose accuracy score falls below a threshold (configurable per tier) are demoted or deactivated.
+Validators whose accuracy falls below a threshold get demoted or deactivated. The threshold is configurable per tier.
 
-### 5. Disclosure Tier Registry (`disclosure-tier-registry.compact`)
+### 5. Disclosure Tier Registry
 
-#### 5.1 Mapping to Midnight's Three-Tier Model
+#### 5.1 Mapping to Midnight's Three Tier Model
 
-MAIS maps agent data to Midnight's three disclosure tiers as follows:
+MAIS maps agent data to Midnight's disclosure tiers as follows.
 
-| Data Category | Public Tier | Auditor Tier | Private Tier |
-|--------------|-------------|--------------|--------------|
-| Agent existence | ✓ | ✓ | ✓ |
-| Agent metadata | ✓ | ✓ | ✓ |
-| Reputation score | ✓ | ✓ | ✓ |
-| Current validator set | ✓ | ✓ | ✓ |
-| Aggregated activity stats |  --  | ✓ | ✓ |
-| Validator evidence history |  --  | ✓ |  --  |
-| Transaction contents |  --  |  --  | ✓ |
-| Agent strategy/configuration |  --  |  --  | ✓ |
-| Operator identity (private agents) |  --  | ✓* | ✓ |
+| Data Category | Public | Auditor | Private |
+|--------------|--------|---------|---------|
+| Agent existence | Yes | Yes | Yes |
+| Agent metadata | Yes | Yes | Yes |
+| Reputation score | Yes | Yes | Yes |
+| Current validator set | Yes | Yes | Yes |
+| Aggregated activity stats | No | Yes | Yes |
+| Validator evidence history | No | Yes | No |
+| Transaction contents | No | No | Yes |
+| Agent strategy and config | No | No | Yes |
+| Operator identity (private agents) | No | Yes* | Yes |
 
-*Auditors registered by the agent operator can access operator identity at auditor tier. Unregistered auditors cannot.
+Auditors registered by the agent operator can see operator identity at auditor tier. Unregistered auditors see nothing.
 
 #### 5.2 Auditor Registration
 
-An agent operator can designate auditor keys:
+An agent operator can designate auditor keys.
 
 ```
 function registerAuditor(
@@ -303,29 +291,23 @@ function registerAuditor(
 )
 ```
 
-`AuditorPermissions` specifies which data categories the auditor can access:
-- `ACTIVITY_STATS`: Aggregate activity data (transaction counts, volume summaries)
-- `EVIDENCE_HISTORY`: Individual validation evidence records
-- `OPERATOR_IDENTITY`: The operator's Compact address (for private agents)
+`AuditorPermissions` specifies which data categories the auditor can access. Options are ACTIVITY_STATS for aggregate data, EVIDENCE_HISTORY for individual validation records, and OPERATOR_IDENTITY for the operator's address (relevant for private agents).
 
 #### 5.3 Regulator Disclosure
 
-For regulated use cases, MAIS defines a standard regulator disclosure flow:
+For regulated use cases MAIS defines a standard regulator disclosure flow.
 
-1. A regulator submits a disclosure request with a ZK-KYC proof of regulatory authority.
-2. The agent operator is notified (off-chain) of the disclosure request.
-3. If the operator approves (or if a timeout passes and the agent's policy permits auto-disclosure), the firewall generates a structured compliance report at auditor-view level.
-4. The report is a ZK proof that proves "this agent's activities for period [T1, T2] were within its declared policy set" without revealing individual transaction contents.
+A regulator submits a disclosure request backed by a ZK KYC proof of regulatory authority. The agent operator gets notified off chain. If the operator approves, or if a timeout passes and the agent's policy allows auto disclosure, the firewall produces a structured compliance report at auditor tier. The report is a ZK proof that says "this agent's activity during this period stayed within its declared policy set" without showing individual transaction contents.
 
-### 6. ERC-8004 Cross-Chain Identity Bridge (`erc8004-bridge.compact`)
+### 6. ERC-8004 Cross Chain Identity Bridge
 
 #### 6.1 Optional Integration
 
-ERC-8004 integration is **optional**  --  agents that don't need cross-chain identity operability can register without it. The bridge is a separate Compact contract that agents opt into.
+ERC-8004 integration is optional. Agents that do not need cross chain identity can register without it. The bridge is a separate Compact contract that agents opt into.
 
 #### 6.2 Bridge Registration
 
-An agent links its Midnight identity to an ERC-8004 identity by calling `linkIdentity()`:
+An agent links its Midnight identity to an ERC-8004 identity by calling `linkIdentity()`.
 
 ```
 function linkIdentity(
@@ -335,28 +317,19 @@ function linkIdentity(
 )
 ```
 
-`crossChainProof` is a ZK proof that:
-1. The submitter controls the Midnight agent identity (proven via the Identity Registry).
-2. The submitter controls the ERC-8004 NFT token (proven by a signature from the EVM address holding the NFT, verified against a state proof of the ERC-8004 Identity Registry contract on Ethereum).
-3. Both proofs are tied to the same root of trust (the operator's key).
+The cross chain proof shows three things. The submitter controls the Midnight agent identity, verified through the Identity Registry. The submitter controls the ERC-8004 NFT, verified by a signature from the EVM address holding that NFT checked against a state proof of the ERC-8004 Identity Registry on Ethereum. And both proofs tie back to the same root of trust, the operator's key.
 
-#### 6.3 Cross-Chain Reputation
+#### 6.3 Cross Chain Reputation
 
-Once linked, an agent's Midnight reputation score can be contributed back to the ERC-8004 ecosystem:
-
-- **Read from ERC-8004**: MAIS contracts can consume ERC-8004 reputation data as an input to Midnight reputation calculation (weighted alongside Midnight-native evidence).
-- **Write to ERC-8004**: MAIS audit results can be written to ERC-8004's Validation Registry on Ethereum via a cross-chain message. This makes Midnight-sourced trust data visible in the broader ERC-8004 ecosystem  --  a first-of-its-kind contribution.
+Once linked, an agent's Midnight reputation score can feed back into the ERC-8004 ecosystem. MAIS contracts can read ERC-8004 reputation data as one input to Midnight reputation calculation, weighted alongside Midnight native evidence. MAIS audit results can also be written to ERC-8004's Validation Registry on Ethereum through a cross chain message. This makes Midnight sourced trust data visible in the broader ERC-8004 ecosystem.
 
 #### 6.4 Security Boundary
 
-The bridge contract enforces:
-- Cross-chain proofs must be freshness-constrained (within 1 hour of bridge call).
-- A threshold of confirmations on the source chain before the bridge accepts a proof.
-- Rate limiting on cross-chain state updates to prevent bridge flooding.
+The bridge contract enforces freshness constraints on cross chain proofs, within one hour of the bridge call. It requires a threshold of confirmations on the source chain before accepting a proof. And it rate limits cross chain state updates to stop flooding attacks.
 
 ### 7. Standard Interface Summary
 
-All MAIS-compliant contracts must implement the following query interface:
+All MAIS compliant contracts must implement this query interface.
 
 ```
 interface MAISAgent {
@@ -365,21 +338,21 @@ interface MAISAgent {
     function getOperator(): CompactAddress
     function getMetadata(): Metadata
     function getIdentityMode(): IdentityMode  // PUBLIC or PRIVATE
-    
+
     // Reputation
     function getReputationScore(): u8
     function getReputationTier(): ReputationTier
     function proveReputation(minScore: u8): ReputationProof
-    
+
     // Validation
     function getValidators(): [ValidatorId]
     function getValidatorCount(): u16
-    
+
     // Disclosure
     function getDisclosureTier(): DisclosureTier
     function isAuditor(auditorAddress: CompactAddress): bool
-    
-    // Cross-chain (optional)
+
+    // Cross chain (optional)
     function getErc8004TokenId(): u256?
     function isErc8004Linked(): bool
 }
@@ -387,166 +360,143 @@ interface MAISAgent {
 
 ## Rationale
 
-### Why a Three-Tier Privacy Model?
+### Why a Three Tier Privacy Model
 
-Midnight's core architectural differentiator from transparent blockchains is its three-tier disclosure model (public, auditor, private). MAIS maps directly to this model rather than abstracting it away because:
+Midnight's core difference from transparent blockchains is its three tier disclosure model covering public, auditor, and private views. MAIS maps directly onto this model rather than hiding it behind an abstraction.
 
-- **Public tier** enables open agent marketplaces  --  discoverability without compromising anything sensitive.
-- **Auditor tier** is the compliance enabler. Regulated AI agents in finance, healthcare, and legal domains cannot operate without an auditable trail. Midnight's auditor tier provides this without exposing strategic data to competitors.
-- **Private tier** protects competitive advantage. A trading agent's strategy is its moat; a governance agent's voting logic is sensitive. Private tier keeps these behind ZK proofs.
+The public tier enables open agent marketplaces. Agents can be discovered without giving up anything sensitive. The auditor tier is the compliance layer. Regulated AI agents in finance, healthcare, and legal domains cannot operate without an auditable trail. Midnight's auditor tier gives them that without exposing strategic data to competitors. The private tier protects competitive advantage. A trading agent's strategy is its moat. A governance agent's voting logic is sensitive. Private tier keeps these behind ZK proofs.
 
-A purely public identity model (like ERC-8004) would discard Midnight's privacy advantage. A purely private model would prevent verifiable trust. The three-tier balance is the correct design.
+A purely public model like ERC-8004 would throw away Midnight's privacy advantage. A purely private model would prevent verifiable trust. The three tier balance sits in the right place.
 
-### Why Dual-Mode Identity (Public + Private)?
+### Why Dual Mode Identity
 
-Monolithic identity models fail for one side. A public-only model forces all agents to be linkable to their operators  --  unacceptable for agents handling sensitive data. A private-only model prevents open agent commerce  --  you cannot build a marketplace if you cannot discover agents.
+Single mode identity fails one side. Public only forces every agent to be traceable to its operator, which is unacceptable for agents handling sensitive data. Private only stops open agent commerce because you cannot build a marketplace if you cannot find agents.
 
-Dual-mode identity lets the ecosystem choose per use case:
-- **Public mode** is the default for open ecosystems (marketplaces, DAOs, public services).
-- **Private mode** is the option for sensitive applications (institutional trading, healthcare agents, legal document agents).
+Dual mode lets the ecosystem choose per use case. Public mode is the default for open ecosystems like marketplaces, DAOs, and public services. Private mode is the option for sensitive applications like institutional trading, healthcare agents, and legal document agents. Both modes expose the same `MAISAgent` interface so consuming contracts and SDKs work identically regardless.
 
-Both modes expose the same `MAISAgent` interface, so consuming contracts and SDKs work identically regardless of the underlying mode.
+### Why Public Scores with Private Evidence
 
-### Why Public Scores + Private Evidence?
+Three alternatives were considered.
 
-Alternative models considered:
+Fully public scores and evidence gives maximum verifiability but lets competitors reverse engineer agent strategy from the evidence trail. This violates Midnight's privacy thesis.
 
-| Model | Pros | Cons | Verdict |
-|-------|------|------|---------|
-| **Fully public scores + evidence** | Maximum verifiability | Competitors can reverse-engineer agent strategy from evidence history | Rejected: violates Midnight privacy thesis |
-| **Fully private scores + evidence** | Maximum privacy | No verifiable trust; every transaction requires bilateral trust negotiation | Rejected: defeats the purpose of a reputation system |
-| **Public scores + private evidence (chosen)** | Verifiable trust without strategy leak | Evidence privacy depends on hash commitment security | **Accepted** |
-| **ZK-provable scores only (no public score)** | Maximum flexibility | Constant ZK proof generation adds latency; no public signal for quick decisions | Deferred to extension |
+Fully private scores and evidence gives maximum privacy but destroys verifiable trust. Every transaction would need bilateral trust negotiation.
 
-The chosen model  --  public score with private evidence  --  enables:
-- **Quick trust decisions**: A contract can read the score from public state in O(1) with no ZK proof.
-- **Deep trust verification**: When needed, a ZK proof can verify the score without revealing evidence.
-- **Competitive privacy**: Evidence commitments prevent strategy reverse-engineering.
-- **Compliance**: Auditors can access evidence history at auditor-view tier.
+Public scores with private evidence gives verifiable trust without strategy leaks. Anyone reads a score in O(1). When deeper verification is needed a ZK proof can verify the score without exposing the evidence. Evidence commitments prevent reverse engineering. And auditors can access evidence history at auditor tier.
 
-### Why Hybrid Validator Tiers?
+ZK provable scores only, with no public score at all, gives maximum flexibility but adds ZK proof latency to every transaction and removes the public signal needed for quick decisions. This is deferred to a possible extension.
 
-A pure permissionless validation model (anyone can validate) is vulnerable to Sybil attacks where an agent operator creates fake validators to inflate their own score. A pure permissioned model requires governance overhead and creates a bottleneck for ecosystem growth.
+### Why Hybrid Validator Tiers
 
-The hybrid model:
-- **Open tier** provides permissionless entry with anti-Sybil mechanisms (stake + accuracy tracking + slashing).
-- **Trusted tier** provides a credibility upgrade path for serious validators.
-- **Institutional tier** provides the regulatory credibility that enterprise customers require.
+Pure permissionless validation lets anyone validate. That invites Sybil attacks where an agent operator spins up fake validators to inflate their own score. Pure permissioned validation needs heavy governance and creates a bottleneck for ecosystem growth.
 
-This is analogous to how certificate authorities operate in TLS  --  multiple tiers with escalating requirements and corresponding trust.
+The hybrid model gives permissionless entry with anti Sybil mechanisms through staking, accuracy tracking, and slashing. The trusted tier provides a credibility upgrade for serious validators. The institutional tier gives enterprise customers the regulatory credibility they need. This mirrors how certificate authorities work in TLS, multiple tiers with rising requirements and corresponding trust.
 
-### Why Optional ERC-8004 Bridge?
+### Why Optional ERC-8004 Bridge
 
-ERC-8004 is the dominant agent identity standard on EVM chains. Midnight agents that also operate on Ethereum (or interact with Ethereum-based agents) benefit from cross-chain identity linking. However:
-
-- Not all Midnight agents need EVM interoperability.
-- Cross-chain bridges introduce additional attack surface.
-- Making the bridge optional keeps the core standard simpler and safer.
-
-The bridge is a separate contract that agents opt into. The core identity, reputation, and validation registries function independently of it.
+ERC-8004 is the main agent identity standard on EVM chains. Midnight agents that also touch Ethereum or work with Ethereum based agents benefit from cross chain identity linking. But not every Midnight agent needs EVM interoperability. Cross chain bridges add attack surface. Making the bridge optional keeps the core standard simpler and the risk smaller. The bridge is a separate contract. The core identity, reputation, and validation registries work without it.
 
 ## Path to Active
 
 ### Acceptance Criteria
 
-MIP-X shall be considered for **Accepted** status when:
+MIP-X should be considered for Accepted status when three things are true.
 
-1. **Reference implementation**: A working implementation of the Identity Registry, Reputation Registry, and Disclosure Tier Registry Compact contracts exists and passes a test suite on Midnight testnet.
-2. **Community review**: The proposal has been presented at a Midnight community workshop and feedback has been incorporated.
-3. **Ecosystem endorsement**: At least two Midnight ecosystem projects (e.g., Midnight City, AlphaTON, or an Aliit Fellowship project) have expressed intent to adopt the standard.
-4. **Security review**: An initial security review of the Compact contract design has been completed by a Midnight Foundation reviewer or an independent auditor.
+First, a working reference implementation of the Identity Registry, Reputation Registry, and Disclosure Tier Registry Compact contracts exists and passes a test suite on Midnight testnet.
 
-MIP-X shall be considered for **Active** status when:
+Second, the proposal has been presented at a Midnight community workshop and feedback has been incorporated.
 
-1. **Testnet deployment**: All core contracts are deployed on Midnight testnet and operating for at least 4 weeks without critical issues.
-2. **SDK availability**: The `@midnight-agent/mais-sdk` TypeScript package is published and documented.
-3. **Ecosystem adoption**: At least 5 unique agent identities registered on testnet, with at least 20 reputation evidence operations performed.
-4. **Documentation**: Complete developer documentation including ARCHITECTURE.md, CONTRIBUTING.md, and a developer quickstart that gets a test agent registered in under 10 minutes.
-5. **Mainnet readiness**: A mainnet deployment plan has been prepared and reviewed.
+Third, at least two Midnight ecosystem projects have said they intend to adopt the standard. This could be Midnight City, AlphaTON, an Aliit Fellowship project, or similar.
+
+MIP-X should be considered for Active status when five things are true.
+
+First, all core contracts are deployed on Midnight testnet and have operated for at least 4 weeks without critical issues. Second, the `@midnight-agent/mais-sdk` TypeScript package is published and documented. Third, at least 5 unique agent identities are registered on testnet with at least 20 reputation evidence operations completed. Fourth, complete developer documentation exists including ARCHITECTURE.md, CONTRIBUTING.md, and a quickstart that gets a test agent registered in under 10 minutes. Fifth, a mainnet deployment plan has been prepared and reviewed.
 
 ### Implementation Plan
 
-| Phase | Component | Timeline | Owner |
-|-------|-----------|----------|-------|
-| 1 | Identity Registry (`identity-registry.compact`) | Weeks 1-4 | TBD |
-| 2 | Reputation Registry (`reputation-registry.compact`) | Weeks 4-8 | TBD |
-| 3 | Disclosure Tier Registry (`disclosure-tier-registry.compact`) | Weeks 8-10 | TBD |
-| 4 | Validation Registry (`validation-registry.compact`) | Weeks 10-14 | TBD |
-| 5 | ERC-8004 Bridge (`erc8004-bridge.compact`) | Weeks 14-16 | TBD |
-| 6 | TypeScript SDK (`@midnight-agent/mais-sdk`) | Weeks 16-20 | TBD |
-| 7 | Testnet deployment + ecosystem onboarding | Weeks 20-24 | TBD |
-| 8 | Security audit + mainnet preparation | Weeks 24-28 | TBD |
+| Phase | Component | Timeline |
+|-------|-----------|----------|
+| 1 | Identity Registry contract | Weeks 1 to 4 |
+| 2 | Reputation Registry contract | Weeks 4 to 8 |
+| 3 | Disclosure Tier Registry contract | Weeks 8 to 10 |
+| 4 | Validation Registry contract | Weeks 10 to 14 |
+| 5 | ERC-8004 Bridge contract | Weeks 14 to 16 |
+| 6 | TypeScript SDK | Weeks 16 to 20 |
+| 7 | Testnet deployment, ecosystem onboarding | Weeks 20 to 24 |
+| 8 | Security audit, mainnet preparation | Weeks 24 to 28 |
 
 ## Backwards Compatibility Assessment
 
 ### Impact on Existing Systems
 
-MAIS is a new standard and does not modify any existing Midnight protocol components. No hard fork is required. The standard is implemented entirely at the application layer via Compact contracts.
+MAIS is a new standard. It does not change any existing Midnight protocol component. No hard fork is needed. Everything lives at the application layer through Compact contracts.
 
 ### Compatibility with Existing Midnight Standards
 
-- **MPS-0003 (CAIP Support)**: No conflict. MAIS uses native Midnight identifiers. CAIP chain identifiers can be used for cross-chain bridge operations but are not required for core functionality.
-- **MPS-0004 (Trusted Proof Serving)**: Complementary. MAIS agents that require delegated proof generation can use MPS-0004's TEE attestation flow as a validator evidence type.
-- **MPS-0005 (Events)**: No conflict. MAIS emits standard Midnight events for public operations. Private operations do not emit events by design.
-- **Midnight ZSwap**: No conflict. MAIS agents can hold and transact ZSwap shielded tokens normally.
+MPS-0003 (CAIP Support) has no conflict. MAIS uses native Midnight identifiers. CAIP chain identifiers can help with cross chain bridge operations but are not needed for core functionality.
+
+MPS-0004 (Trusted Proof Serving) is complementary. MAIS agents that need delegated proof generation can use the TEE attestation flow from MPS-0004 as a validator evidence type.
+
+MPS-0005 (Events) has no conflict. MAIS emits standard Midnight events for public operations. Private operations do not emit events by design.
+
+Midnight ZSwap has no conflict. MAIS agents can hold and transact ZSwap shielded tokens as usual.
 
 ### Compatibility with ERC-8004
 
-MAIS is designed as a complementary standard to ERC-8004, not a competing one. The optional ERC-8004 bridge enables interoperability. ERC-8004 agents that link to MAIS maintain their ERC-8004 identity. MAIS agents that don't link to ERC-8004 are unaffected.
+MAIS is designed to work alongside ERC-8004, not to compete with it. The optional bridge enables interoperability. ERC-8004 agents that link to MAIS keep their ERC-8004 identity. MAIS agents that do not link are unaffected.
 
 ### Migration Path
 
-No migration is required as this is a new standard. Existing ad-hoc agent identity implementations on Midnight can adopt MAIS by:
-1. Registering their agent with the Identity Registry.
-2. Implementing the `MAISAgent` interface on their existing contract (a thin wrapper).
-3. Optionally migrating any existing reputation data into the Reputation Registry.
+No migration is needed since this is a new standard. Existing ad hoc agent identity implementations on Midnight can adopt MAIS by registering with the Identity Registry, putting the `MAISAgent` interface on their existing contract as a thin wrapper, and optionally moving any existing reputation data into the Reputation Registry.
 
 ## Security Considerations
 
 ### Threat Model
 
-**Threat Actor 1  --  Sybil validator**: An agent operator creates multiple fake validator identities to inflate their own reputation score.
+**Threat Actor 1, the Sybil validator.** An agent operator creates many fake validator identities to inflate their own reputation score.
 
-*Mitigation*: Open validators must stake 10,000 NIGHT. Accuracy tracking with slashing makes Sybil validation economically irrational. The stake cost multiplied by the number of validators needed to meaningfully inflate a score exceeds the expected benefit of a higher reputation tier.
+Mitigation. Open validators must stake 10,000 NIGHT. Accuracy tracking with slashing makes Sybil validation cost more than it earns. The stake cost multiplied by the number of validators needed to meaningfully move a score exceeds the benefit of a higher reputation tier.
 
-**Threat Actor 2  --  Reputation gaming**: An agent executes a series of trivial, low-risk transactions to accumulate positive evidence, then pivots to high-value malicious transactions once reputation is high.
+**Threat Actor 2, reputation gaming.** An agent runs a series of small safe transactions to pile up positive evidence, then pivots to high value malicious transactions once the reputation is high.
 
-*Mitigation*: The 90-day sliding window with recency bias makes reputation a "perishable" asset. Score decay (1 point/week without new evidence) prevents long-term hoarding. Evidence type weighting gives lower weight to low-value transactions  --  the system can be configured to require high-value successful transactions for tier upgrades.
+Mitigation. The 90 day sliding window with recency weighting makes reputation a perishable asset. Score decay of one point per week without fresh evidence prevents long term hoarding. Evidence type weighting gives lower weight to low value transactions. The system can be set up to require high value successful transactions before tier upgrades.
 
-**Threat Actor 3  --  Private agent deanonymization**: An observer correlates private agent activity with public metadata patterns (timing, transaction sizes, counterparty patterns) to identify the agent's operator.
+**Threat Actor 3, private agent deanonymization.** An observer correlates private agent activity with public metadata patterns like timing, transaction sizes, and counterparty patterns to figure out who runs the agent.
 
-*Mitigation*: This is a fundamental metadata analysis problem, not unique to MAIS. Midnight's privacy layer already provides baseline protections. MAIS adds: (a) private agent IDs are not emitted in events; (b) credential commitments use salted hashes; (c) the standard recommends randomized transaction timing and amount bucketing for privacy-sensitive agents (implementation guidance in SDK documentation).
+Mitigation. This is a metadata analysis problem, not unique to MAIS. Midnight's privacy layer already gives baseline protection. MAIS adds several things. Private agent IDs are not emitted in events. Credential commitments use salted hashes. The SDK documentation recommends randomised transaction timing and amount rounding for privacy sensitive agents.
 
-**Threat Actor 4  --  Bridge oracle manipulation**: An attacker feeds false ERC-8004 data through the cross-chain bridge to manipulate Midnight-based reputation scores.
+**Threat Actor 4, bridge oracle manipulation.** An attacker feeds false ERC-8004 data through the cross chain bridge to mess with Midnight reputation scores.
 
-*Mitigation*: The bridge requires confirmed source-chain state proofs (not oracle reports). Freshness constraints prevent stale data injection. Rate limiting prevents flooding attacks. ERC-8004 data is weighted alongside Midnight-native evidence  --  even a completely compromised bridge cannot override Midnight-sourced reputation.
+Mitigation. The bridge requires confirmed source chain state proofs, not oracle reports. Freshness constraints stop stale data. Rate limiting stops flooding. And ERC-8004 data is weighted alongside Midnight native evidence, so even a fully compromised bridge cannot override what Midnight validators say.
 
-**Threat Actor 5  --  Compromised operator key**: If an agent operator's key is stolen, the attacker can deactivate the agent, transfer control, or modify metadata.
+**Threat Actor 5, compromised operator key.** If an attacker steals the agent operator's key they could deactivate the agent, transfer control, or change metadata.
 
-*Mitigation*: Operator transfer requires multi-factor proof (either multi-sig or a ZK proof of current operator consent). Deactivation is irreversible  --  an attacker cannot profit from deactivating an agent. Metadata modifications are non-critical (they don't affect transaction authorization). Key rotation is recommended via Midnight's wallet SDK.
+Mitigation. Operator transfer needs multi factor proof, either multi sig or a ZK proof of current operator consent. Deactivation is irreversible so an attacker gains nothing from it. Metadata changes are not critical because they do not control transaction authorisation. Key rotation is recommended through Midnight's wallet SDK.
 
 ### What MAIS Does Not Protect Against
 
-Explicit scope boundaries:
+These boundaries matter for credibility and for understanding where responsibility sits.
 
-- MAIS does not guarantee agent _behavior_  --  only that agent identity, reputation, and validation are verifiable. An agent with a high reputation score can still execute a bad transaction; the reputation downgrade that follows is the mechanism, not prevention.
-- MAIS does not protect against smart contract vulnerabilities in the Compact contracts implementing the standard itself. These contracts require independent security audit.
-- MAIS does not protect against quantum adversaries breaking the underlying ZK proof system. Midnight's Plonk implementation inherits the cryptographic assumptions of the BLS12-381 curve.
+MAIS does not guarantee what an agent actually does. It only guarantees that identity, reputation, and validation are verifiable. A highly reputed agent can still make a bad trade. The reputation downgrade that follows is the mechanism, not prevention.
+
+MAIS does not protect against bugs in the Compact contracts that implement the standard itself. Those contracts need their own security audit.
+
+MAIS does not protect against a quantum adversary breaking the underlying ZK proof system. Midnight's Plonk implementation inherits the cryptographic assumptions of BLS12-381.
 
 ## Implementation
 
 ### Compact Contract Structure
 
-The reference implementation consists of four Compact contracts:
+The reference implementation has four Compact contracts.
 
 ```
 midnight-agent-identity/
 ├── contracts/
-│   ├── identity-registry.compact       # Agent registration + metadata
-│   ├── reputation-registry.compact     # Score calculation + evidence storage
-│   ├── validation-registry.compact     # Validator management + evidence submission
-│   ├── disclosure-tier-registry.compact # Three-tier access control
-│   └── erc8004-bridge.compact          # Cross-chain identity linking
+│   ├── identity-registry.compact
+│   ├── reputation-registry.compact
+│   ├── validation-registry.compact
+│   ├── disclosure-tier-registry.compact
+│   └── erc8004-bridge.compact
 ├── tests/
 │   ├── identity-registry.test.ts
 │   ├── reputation-registry.test.ts
@@ -569,11 +519,7 @@ midnight-agent-identity/
 
 ### Dependencies
 
-- **Midnight Compact Runtime**: For ZK proof generation and verification.
-- **Midnight.js SDK**: For wallet integration and transaction submission.
-- **Midnight ZSwap**: For NIGHT staking (validators).
-- **zk-kit**: For credential commitment schemes (optional, for private identity mode).
-- **External (optional)**: ERC-8004 contract ABIs for cross-chain bridge.
+The implementation depends on the Midnight Compact Runtime for ZK proof generation and verification, the Midnight.js SDK for wallet integration and transaction submission, and Midnight ZSwap for NIGHT staking by validators. ZK Kit is optional for credential commitment schemes in private identity mode. ERC-8004 contract ABIs are optional for the cross chain bridge.
 
 ### SDK Interface Design
 
@@ -600,7 +546,7 @@ await agent.register();
 const reputation = await agent.getReputation();
 // => { score: 85, tier: 'PROVEN', evidenceCount: 42, lastUpdated: '2026-05-15' }
 
-// Prove reputation (ZK proof that score >= threshold)
+// Prove reputation, ZK proof that score meets threshold
 const proof = await agent.proveReputation({ minScore: 60 });
 // Submit proof to counterparty contract for verification
 
@@ -611,7 +557,7 @@ await validator.addEvidence({
   proof: observationProof,
 });
 
-// Read audit trail (auditor-view)
+// Read audit trail at auditor tier
 const auditTrail = await agent.getAuditTrail({
   from: '2026-05-01',
   to: '2026-05-18',
@@ -623,44 +569,44 @@ const auditTrail = await agent.getAuditTrail({
 
 ### Unit Tests
 
-Each Compact contract must have ≥90% branch coverage:
+Each Compact contract must reach 90 percent or higher branch coverage.
 
-- **Identity Registry**: Test public registration, private registration, metadata update, operator transfer (authorized and unauthorized), deactivation, reactivation prevention.
-- **Reputation Registry**: Test score calculation edge cases (no evidence, single evidence, many evidence), negative penalty, decay over time, tier transitions, ZK proof generation and verification.
-- **Validation Registry**: Test validator registration (all tiers), evidence submission, accuracy tracking, stake slashing, demotion.
-- **Disclosure Tier Registry**: Test tier transitions, auditor registration, unauthorized access attempts, regulator disclosure flow.
-- **ERC-8004 Bridge**: Test identity linking, cross-chain proof verification, replay prevention, rate limiting.
+The Identity Registry tests must cover public and private registration, metadata updates, authorised and unauthorised operator transfers, deactivation, and prevention of reactivation after deactivation.
+
+The Reputation Registry tests must cover score calculation edge cases like no evidence, single evidence, and many pieces of evidence. They must test negative penalties, decay over time, tier changes, and ZK proof generation with verification.
+
+The Validation Registry tests must cover validator registration at all three tiers, evidence submission, accuracy tracking, stake slashing, and demotion.
+
+The Disclosure Tier Registry tests must cover tier transitions, auditor registration, unauthorised access attempts, and the regulator disclosure flow.
+
+The ERC-8004 Bridge tests must cover identity linking, cross chain proof verification, replay prevention, and rate limiting.
 
 ### Integration Tests
 
-- Full agent lifecycle: register → accumulate reputation → upgrade tier → cross-chain link → deactivate.
-- Multi-agent scenario: 10 agents with interleaved reputation operations.
-- Validator collusion scenario: multiple validators from same operator attempting Sybil attack.
+A full agent lifecycle test goes from registration through reputation building, tier upgrade, cross chain linking, and deactivation. A multi agent scenario runs ten agents with interleaved reputation operations. A validator collusion scenario tests multiple validators from the same operator attempting a Sybil attack.
 
 ### Stress Tests
 
-- 10,000 agent registrations (concurrent).
-- 1,000 evidence submissions per minute (reputation throughput).
-- 100 concurrent reputation proof generations.
+Ten thousand concurrent agent registrations. One thousand evidence submissions per minute. One hundred reputation proof generations happening at the same time.
 
 ### Test Environment
 
-Tests run against a local Midnight testnet (devnet) configured via the Midnight.js SDK. CI pipeline via GitHub Actions runs the full test suite on every PR.
+Tests run against a local Midnight testnet set up through the Midnight.js SDK. A GitHub Actions CI pipeline runs the full test suite on every PR.
 
 ## References
 
-- ERC-8004: AI Agent Identity, Reputation, and Validation Registries  --  [ERC-8004 Specification](https://eips.ethereum.org/EIPS/eip-8004)
-- Midnight Network Documentation  --  [docs.midnight.network](https://docs.midnight.network/)
-- Midnight Compact Language Reference  --  [docs.midnight.network/develop/reference/compact](https://docs.midnight.network/develop/reference/compact/)
-- AlphaTON + Midnight Partnership  --  Midnight Foundation Announcement (2026)
-- Midnight City Simulation  --  Midnight Network Developer Portal
-- Bastion Agentic Defense  --  On-chain security middleware for AI agents (complementary project)
-- ZK-KYC: Zero-Knowledge Proofs for KYC Compliance  --  Reference implementations by various providers
+- ERC-8004: AI Agent Identity, Reputation, and Validation Registries. https://eips.ethereum.org/EIPS/eip-8004
+- Midnight Network Documentation. https://docs.midnight.network/
+- Midnight Compact Language Reference. https://docs.midnight.network/develop/reference/compact/
+- AlphaTON and Midnight Partnership. Midnight Foundation Announcement, 2026
+- Midnight City Simulation. Midnight Network Developer Portal
+- Bastion Agentic Defense. On chain security middleware for AI agents (complementary project)
+- ZK KYC. Zero Knowledge Proofs for KYC Compliance, reference implementations by various providers
 
 ## Acknowledgements
 
-This MIP draws inspiration from ERC-8004's agent identity model (Ethereum Foundation dAI team), the Bastion Agentic Defense project's security middleware architecture, and Midnight's three-tier disclosure privacy model (IOG/Midnight Foundation).
+This MIP draws inspiration from ERC-8004's agent identity model by the Ethereum Foundation dAI team, the Bastion Agentic Defense project's security middleware architecture, and Midnight's three tier disclosure privacy model by IOG and the Midnight Foundation.
 
 ## Copyright Waiver
 
-All contributions (code and text) submitted in this MIP must be licensed under the Apache License, Version 2.0. Submission requires agreement to the Midnight Foundation Contributor License Agreement [Link to CLA], which includes the assignment of copyright for your contributions to the Foundation.
+All contributions, both code and text, submitted in this MIP must be licensed under the Apache License, Version 2.0. Submission requires agreement to the Midnight Foundation Contributor License Agreement, which includes the assignment of copyright for your contributions to the Foundation.

@@ -1,186 +1,172 @@
-**Category**: Standards  --  Midnight Improvement Proposal  
-**Status**: Draft  --  seeking community feedback before formal submission  
+**Category**: Standards, Midnight Improvement Proposal
+**Status**: Draft, looking for community feedback before formal submission
 
 ---
 
 ## TL;DR
 
-AI agents are coming to Midnight. Midnight City runs Gemini agents. AlphaTON is building privacy-preserving agents for Telegram. But there is no standard for agent identity, reputation, or validation on Midnight.
+AI agents are arriving on Midnight. Midnight City already runs Gemini agents. AlphaTON is building privacy agents for Telegram's billion users. But there is no standard way for these agents to say who they are, prove they can be trusted, or get validated by others.
 
-This proposal defines **MAIS**  --  the Midnight Agent Identity Standard. Four Compact contracts that let agents:
+This proposal defines **MAIS**, the Midnight Agent Identity Standard. It is made of four Compact contracts that let agents do the following.
 
-- **Register** with public or private identity
-- **Build reputation** with public scores backed by private evidence
-- **Be validated** by a hybrid system of open, trusted, and institutional validators
-- **Disclose selectively** across Midnight's public/auditor/private tiers
-- **Optionally bridge** to ERC-8004 on Ethereum for cross-chain interoperability
+Register with either a public or private identity. Build up a reputation with scores that anyone can read but whose underlying evidence stays private. Get validated by a system that mixes open validators, trusted validators, and institutional validators. Choose what data to show at each of Midnight's three disclosure tiers (public, auditor, private). And optionally link to ERC-8004 on Ethereum if cross chain identity matters to you.
 
-Ethereum has ERC-8004 for this, but it is fully transparent. Midnight lets us do better  --  verifiable trust **without** exposing agent strategies.
+Ethereum has ERC-8004 for agent identity already. But ERC-8004 lives on a transparent chain. Midnight lets us do something better. We can have trust that is verifiable without giving away how the agent operates.
 
 ---
 
-## The Problem in Detail
+## The Problem in More Detail
 
-Ethereum launched ERC-8004 ("AI Agent Identity, Reputation, and Validation Registries") in January 2026. It provides on-chain identity for AI agents on EVM chains. But ERC-8004 is designed for transparent blockchains  --  every agent's metadata, reputation score, and validation record is publicly readable. This works for open ecosystems but fails for competitive or regulated domains.
+Ethereum launched ERC-8004 in January 2026. It gives AI agents an on chain identity, reputation score, and validation record on EVM chains. But because ERC-8004 sits on transparent blockchains, all of that data is public. Anyone can read any agent's metadata, score, and full validation history. That works fine for open ecosystems. It fails hard when agents operate in competitive or regulated domains.
 
-**On Midnight, the stakes are different.** A trading agent's strategy is its competitive moat  --  exposing its identity and reputation history on-chain would let competitors reverse-engineer its approach. A compliance agent handling sensitive financial data cannot have its full validation trail visible to the network. A governance agent's voting logic is sensitive to the DAO it serves.
+Midnight raises the stakes. A trading agent's strategy is what makes it money. If its identity and reputation trail sit on chain for anyone to read, competitors can reverse engineer its approach. A compliance agent handling sensitive financial data cannot have its validation history visible to the entire network. A governance agent serving a DAO has voting logic that needs to stay confidential.
 
-Midnight's zero-knowledge architecture solves this by design. Selective disclosure means an agent can prove its identity and reputation without revealing its full state. But Midnight currently has **no standard for doing this**. Every project building agents on Midnight (Midnight City, AlphaTON, independent builders) invents its own ad-hoc identity scheme.
+Midnight's zero knowledge architecture was built for exactly this. Selective disclosure means an agent can prove who it is and how trusted it is without dumping its full state onto the chain. But Midnight does not yet have a standard for doing that. Every team building agents on Midnight right now invents its own identity scheme from scratch.
 
-### Why Act Now
+### Why We Should Act Now
 
-Three developments make this standard urgent:
+Three things make this standard urgent.
 
-1. **Midnight mainnet went live 30 March 2026.** Developer activity surged 1,617% post-Summit. If we do not establish a standard now, we will have ten incompatible agent identity schemes by end of year.
+First, Midnight mainnet went live on 30 March 2026. Developer activity surged over 1,600 percent after the Summit in late 2025. If we do not put a standard in place right now, we could end up with ten different identity schemes by the end of the year.
 
-2. **AlphaTON targets Telegram's one billion users** with privacy-preserving AI agents. These agents need a native Midnight identity system  --  their entire value proposition is Midnight's privacy guarantees. They cannot depend on an EVM-transparent standard.
+Second, AlphaTON is targeting Telegram's one billion users with privacy preserving AI agents. These agents need an identity system that is native to Midnight. Their entire pitch depends on Midnight's privacy model. They cannot rely on an EVM standard that puts everything in public view.
 
-3. **Midnight City Simulation** uses Gemini-powered agents as a live public testbed. These agents currently have no formal identity standard. A standard would make Midnight City agents composable and interoperable with real-world Midnight applications.
+Third, Midnight City Simulation uses Gemini agents as a live testbed. Those agents have no formal identity standard today. If they did, they would become composable with real Midnight applications instead of staying locked inside the simulation.
 
 ---
 
-## The Proposal: MAIS Four-Registry Architecture
+## The Proposal
 
-MAIS defines four registries as Compact contracts:
+MAIS defines four registries as Compact contracts.
 
 ### 1. Identity Registry
 
-| Feature | Public Mode | Private Mode |
-|---------|-------------|--------------|
-| Identity representation | Compact address | ZK credential (commitment) |
-| Registration event | Public event emitted | No event (private) |
-| Metadata | Public state | Private state |
-| Use case | Open marketplaces, DAOs | Institutional trading, sensitive apps |
+Agents can register in one of two modes.
 
-Common interface regardless of mode: `exists()`, `getMetadata()`, `proveIdentity()`, `updateMetadata()`, `deactivate()`.
+In public mode the agent's Compact address serves as its identity. Metadata like name, capabilities, and operator address lives in public state. This suits agents that operate in open marketplaces.
+
+In private mode the agent holds a ZK credential instead. The contract stores only a commitment to that credential in private state. The operator proves they know the credential via a ZK proof without ever revealing the identity on chain. No event gets emitted when a private agent registers. This suits agents that handle sensitive data.
+
+Both modes expose the same interface. Contracts and SDKs work the same way regardless of which mode sits underneath.
 
 ### 2. Reputation Registry
 
-**Public score, private evidence** model:
+The reputation system uses a model where the score is public but the evidence is private.
 
-- **Score (0-100)** stored in public state  --  any contract reads it in O(1)
-- **Evidence commitments** stored in private state  --  the *reasons* for the score are hashed, not readable
-- **ZK-prove**: agent can generate a proof "my score ≥ 60" without revealing the exact value
-- **Three tiers**: Basic (0-59), Proven (60-89), Institutional (90-100)
-- **Weighted decay**: recent evidence carries more weight; scores decay without fresh evidence
+The score, a number from 0 to 100, sits in public state. Any contract can read it in a single lookup. Three tiers sit on top of that score. Basic covers 0 to 59. Proven covers 60 to 89. Institutional covers 90 to 100.
+
+The evidence that produced the score lives as hash commitments in private state. Nobody can read the reasons behind a score unless the agent chooses to reveal them. This stops competitors from studying an agent's transaction history to reverse engineer its strategy.
+
+An agent can also generate a ZK proof that says "my score is at least X" without giving away the exact number. That lets two parties negotiate trust at whatever threshold matters to them.
+
+Scores use a weighted sliding window across 90 days. Recent evidence carries more weight. Old evidence decays. Scores also decay slowly if an agent stops accumulating fresh evidence.
 
 ### 3. Validation Registry
 
-Three validator tiers with anti-Sybil mechanisms:
+Three tiers of validators, each with anti Sybil protections.
 
-| Tier | Requirement | Stake | Slashable |
-|------|-------------|-------|-----------|
-| Open | Stake NIGHT | 10,000 | Yes |
-| Trusted | Foundation audit | 50,000 | Yes |
-| Institutional | ZK-KYC proof | 100,000 | Yes |
+Open validators can be anyone. They must stake 10,000 NIGHT. Their stake gets slashed if they submit bad validations.
 
-All validators have accuracy scores tracked on-chain. Bad validations → slashing. Low accuracy → demotion.
+Trusted validators must pass a Foundation audit. They stake 50,000 NIGHT.
+
+Institutional validators must complete a ZK KYC check from an accredited provider. They stake 100,000 NIGHT.
+
+Every validator has an accuracy score tracked on chain. When someone submits bad evidence and gets caught, their accuracy drops and their stake gets cut. If accuracy falls below a threshold, the validator loses their tier.
 
 ### 4. Disclosure Tier Registry
 
-Maps agent data directly to Midnight's native three-tier privacy model:
+This maps agent data directly onto Midnight's three built in privacy tiers.
 
-| Data Category | Public | Auditor | Private |
-|--------------|--------|---------|---------|
-| Agent existence | ✓ | ✓ | ✓ |
-| Reputation score | ✓ | ✓ | ✓ |
-| Metadata | ✓ | ✓ | ✓ |
-| Activity stats |  --  | ✓ | ✓ |
-| Evidence history |  --  | ✓ |  --  |
-| Transaction content |  --  |  --  | ✓ |
-| Strategy/configuration |  --  |  --  | ✓ |
+The public tier shows that the agent exists, its metadata, and its reputation score. Anyone can read these.
 
-### Optional: ERC-8004 Bridge
+The auditor tier adds activity statistics and evidence history. Only addresses the agent operator has registered as auditors can see this.
 
-Agents can optionally link their Midnight identity to an ERC-8004 NFT on Ethereum. The bridge:
-- Verifies cross-chain proofs of identity control on both chains
-- Enables MAIS reputation data to be written to ERC-8004's Validation Registry
-- Is a separate, optional contract  --  core MAIS functions without it
+The private tier holds transaction contents and the agent's strategy. Only the operator can access it.
+
+### Optional ERC-8004 Bridge
+
+An agent can link its Midnight identity to an ERC-8004 NFT on Ethereum if it wants cross chain interoperability. The bridge verifies that the same operator controls both identities using cross chain proofs. It also lets Midnight reputation data flow back into ERC-8004's Validation Registry on Ethereum.
+
+The bridge is a separate contract. Core MAIS works perfectly without it.
 
 ---
 
-## Why These Design Choices?
+## Why These Design Choices
 
-This forum post is the right place for deeper discussion of the rationale. I will summarise the key tradeoffs here; the full rationale is in the MIP document.
+The full rationale lives in the MIP document. Here is a short version of the key tradeoffs.
 
-**Why dual-mode identity (public + private)?** Monolithic models fail for one side. Public-only forces every agent to be linkable to its operator  --  unacceptable for sensitive applications. Private-only prevents open agent commerce  --  you cannot build a marketplace without discoverability. Dual-mode lets the ecosystem choose per use case.
+**Why dual mode identity?** A single mode fails one side. Public only forces every agent to be linked to its operator, which is unacceptable for sensitive use cases. Private only prevents open agent commerce, because you cannot build a marketplace if you cannot discover agents. Letting the ecosystem pick per use case is the right call.
 
-**Why public scores + private evidence?** Fully public (like ERC-8004) would let competitors reverse-engineer agent strategies from reputation history. Fully private would prevent quick trust decisions  --  every transaction would require a ZK proof round-trip. Public scores with ZK-provable private evidence is the balanced middle ground.
+**Why public scores with private evidence?** Fully public would let competitors reverse engineer agent strategies. Fully private would force a ZK proof round trip for every trust decision, which is slow. Public scores give instant reads. ZK provable private evidence gives depth when needed.
 
-**Why hybrid validators?** Pure permissionless validation is vulnerable to Sybil attacks. Pure permissioned requires centralised governance. The tiered approach (open/trusted/institutional) provides permissionless entry with anti-Sybil staking and an upgrade path.
+**Why hybrid validators?** Purely permissionless validation invites Sybil attacks where agents create fake validators to pump their own scores. Purely permissioned validation creates a central bottleneck. The tiered approach gives everyone an entry point through staking while offering a path to higher trust.
 
-**Why optional ERC-8004 bridge?** Not all Midnight agents need EVM interoperability. Cross-chain bridges add attack surface. Making it optional keeps the core standard simpler and safer.
+**Why optional ERC-8004 bridge?** Not every Midnight agent touches Ethereum. Bridges add attack surface. Making it optional keeps the core standard simpler and the attack surface smaller.
 
-**No TEE attestation in core standard?** Midnight is ZK-native. TEE is a separate trust model that depends on trust in hardware vendors. It can be an optional extension MIP, but does not belong in the core identity standard.
+**No TEE attestation in the core standard?** Midnight is built on ZK proofs. TEE means trusting a hardware vendor, which is a different security model entirely. TEE can arrive later as an extension.
 
 ---
 
 ## Where I Need Your Feedback
 
-I am looking for community input before formalising this as a MIP submission. Here are the questions I would most like answered:
+I am looking for community input before submitting this as a formal MIP. Here are the questions I most want answered.
 
 ### Design Questions
 
-1. **Dual-mode identity**: Should we ship both modes in v1, or start with public-only and add private mode later? Private mode adds ZK commitment complexity but is the entire point of building on Midnight for sensitive use cases.
+1. Should we ship both identity modes in v1, or start with public only and add private mode later? Private mode adds complexity but it is also the whole reason to build on Midnight for sensitive use cases.
 
-2. **Reputation privacy**: Is public score + private evidence the right balance? Should reputation scores themselves be fully private (only ZK-provable)?
+2. Is public score plus private evidence the right balance? Or should reputation scores be fully private and only available through ZK proofs?
 
-3. **Validator stake amounts**: 10,000 / 50,000 / 100,000 NIGHT  --  are these reasonable thresholds? Should they be governance-adjustable?
+3. Are 10k, 50k, and 100k NIGHT the right amounts for validator stakes? Should these numbers be adjustable through governance?
 
-4. **Validator slashing parameters**: What is the right penalty curve for bad validations? Current proposal: missed violation = -5 accuracy, slashed stake. False positive = -3 accuracy, half slashed stake.
+4. What should the slashing curve look like for bad validations? The current draft penalises a missed violation with minus 5 accuracy and slashed stake. A false positive costs minus 3 accuracy and half the stake.
 
-5. **Regulator disclosure flow**: Should regulated agents auto-disclose auditor-view data to regulators after a timeout, or always require operator approval?
+5. When a regulator requests data from a regulated agent, should the agent auto disclose auditor tier data after a timeout, or always require the operator to approve first?
 
 ### Ecosystem Questions
 
-6. **Midnight City team**: Can MAIS be adopted for Midnight City's Gemini agents? What is missing from the metadata schema?
+6. Midnight City team, could MAIS work for your Gemini agents? What is missing from the metadata schema?
 
-7. **AlphaTON / Telegram**: Do Telegram agents need private mode identity? What additional metadata fields would you need?
+7. AlphaTON team, do Telegram agents need the private identity mode? What extra metadata fields would you want?
 
-8. **Agent builders**: What is your minimum viable identity feature? Can you work with just public mode + reputation to start?
+8. Agent builders, what is the smallest set of features you need to get started? Can you work with just public mode and reputation at launch?
 
-9. **x402 integration**: Should agent metadata include a payment method field (what the agent charges, how to pay)?
+9. Should agent metadata include a field for x402 payment info, like what the agent charges and how to pay it?
 
-10. **Early validators**: Who would run validators in the early ecosystem? Should the Midnight Foundation run reference validators initially?
+10. Who would run validators in the early ecosystem? Should the Midnight Foundation run reference validators at the start?
 
 ### Process Questions
 
-11. **MIP numbering**: I am submitting this as a draft PR to the MIPs repository. Is this the right venue, or should it go through an MPS problem statement first?
+11. Should I submit this as a draft PR to the MIPs repository directly, or should it go through an MPS problem statement first?
 
-12. **Workshop interest**: Would you attend a 2-hour community workshop to review the MAIS specification in detail? If there is sufficient interest I will schedule one in ~3 weeks.
+12. Would you attend a workshop to review the MAIS spec together? If enough people say yes I will set one up in about three weeks.
 
 ---
 
 ## What Success Looks Like
 
-If adopted, the standard would deliver:
+If adopted, the standard would deliver a few concrete things.
 
-- **Identity Registry + SDK**: Any developer can register an agent on Midnight with one function call
-- **Reputation system**: On-chain, verifiable trust scores that agents can prove without revealing their full history
-- **Validator ecosystem**: A credible path from open validators to institutional-grade validation
-- **ERC-8004 bridge**: Midnight agents visible in the broader AI agent ecosystem, and vice versa
+An Identity Registry and SDK that lets any developer register an agent on Midnight with one function call. A reputation system with on chain trust scores that agents can prove without exposing their full history. A validator ecosystem that goes from open entry to institutional grade trust. And an ERC-8004 bridge that makes Midnight agents visible in the broader AI agent world and brings Ethereum agent data back the other way.
 
 ---
 
 ## Links and References
 
-- **Full MIP document**: [mip-XXXX-midnight-agent-identity-standard.md](https://github.com/mzf11125/midnight-improvement-proposals/blob/main/mips/mip-XXXX-midnight-agent-identity-standard.md)
-- **ERC-8004 Specification**: [eips.ethereum.org/EIPS/eip-8004](https://eips.ethereum.org/EIPS/eip-8004)
-- **Midnight Documentation**: [docs.midnight.network](https://docs.midnight.network/)
-- **Midnight Compact Language Reference**: [docs.midnight.network/develop/reference/compact](https://docs.midnight.network/develop/reference/compact/)
-- **Bastion Agentic Defense**: Complementary on-chain security middleware for AI agents
+- Full MIP document: [mip-XXXX-midnight-agent-identity-standard.md](https://github.com/mzf11125/midnight-improvement-proposals/blob/main/mips/mip-XXXX-midnight-agent-identity-standard.md)
+- ERC-8004 Specification: [eips.ethereum.org/EIPS/eip-8004](https://eips.ethereum.org/EIPS/eip-8004)
+- Midnight Documentation: [docs.midnight.network](https://docs.midnight.network/)
+- Midnight Compact Language Reference: [docs.midnight.network/develop/reference/compact](https://docs.midnight.network/develop/reference/compact/)
+- Bastion Agentic Defense: Complementary on chain security middleware for AI agents
 
 ---
 
 ## How to Participate
 
-- **Reply below** with feedback on any of the questions above
-- **Open issues** on the GitHub repository for specific technical concerns
-- **Submit PRs** if you want to contribute to the specification or reference implementation
-- **DM me** if you want to co-author or contribute to the reference implementation
+Reply below with feedback on any of the questions above. Open issues on the GitHub repository for specific technical concerns. Submit PRs if you want to contribute to the spec or the reference implementation. DM me if you want to co author or help build the reference implementation.
 
-I will consolidate feedback into weekly summaries and schedule a community workshop if there is sufficient interest. Thank you for reading  --  looking forward to the discussion.
+I will consolidate feedback into weekly summaries. A community workshop follows if enough people show interest. Thanks for reading. Looking forward to the discussion.
 
 ---
 
-*This post is also being discussed on [Midnight Discord](https://discord.com/invite/midnightnetwork) (#developers channel).*
+*Also being discussed on Midnight Discord in the developers channel.*
